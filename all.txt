@@ -1,0 +1,683 @@
+﻿FilmDetail.vue
+
+<template>
+    <div class="film-detail-container">
+        <div class="film-header">
+            <img :src="film.poster_url || defaultPoster" alt="Постер" class="film-poster" />
+            <div class="film-info">
+                <div class="film-header-info">
+                    <h2 class="film-title">{{ film.title }}</h2>
+                </div>
+                <div class="film-description">
+                    <p>{{ film.description }}</p>
+                </div>
+            </div>
+        </div>
+        <div v-if="userReview" class="user-review">
+            <h4>Ваш отзыв</h4>
+            <p><strong>{{ userReview.author_name }}</strong> — {{ formatDate(userReview.created_at) }}</p>
+            <p>{{ userReview.text }}</p>
+            <button @click="deleteReview" class="delete-button">Удалить отзыв</button>
+        </div>
+
+        <div v-if="!userReview" class="review-form">
+            <form @submit.prevent="addReview">
+                <textarea v-model="text"></textarea>
+                <button type="submit">Оставить отзыв</button>
+            </form>
+        </div>
+        <div>
+            <h3>Отзывы других пользователей</h3>
+            <ul class="review-list" v-if="publicReviews.length > 0">
+                <li v-for="review in publicReviews" :key="review.id" class="review-item">
+                    <p><strong>{{ review.author_name }}</strong> — {{ formatDate(review.created_at) }}</p>
+                    <p>{{ review.text }}</p>
+                </li>
+            </ul>
+            <p v-else class="no-reviews">Пока нет отзывов</p>
+        </div>
+    </div>
+</template>
+
+<script>
+    export default {
+        data() {
+            return {
+                defaultPoster: `${this.$axios.defaults.baseURL}/static/default-film.png`,
+                film: {
+                    poster_url: '' // Добавляем явное определение поля
+                },
+                userReview: null,
+                publicReviews: [],
+                text: "",
+                errors: {},
+                isLoading: true,
+                error: null
+            };
+        },
+        methods: {
+            async loadFilm() {
+                try {
+                    const token = localStorage.getItem("token");
+
+                    const filmRes = await this.$axios.get(`/films/${this.$route.params.id}`);
+                    this.film = {
+                        ...filmRes.data,
+                        poster_url: filmRes.data.poster_url || this.defaultPoster
+                    };
+
+                    const reviewsRes = await this.$axios.get(`/films/${this.$route.params.id}/reviews/`, {
+                        headers: token ? { Authorization: `Bearer ${token}` } : {}
+                    });
+
+                    this.userReview = reviewsRes.data.user_review || null;
+                    this.publicReviews = reviewsRes.data.public_reviews || [];
+                } catch (err) {
+                    console.error("Ошибка загрузки фильма:", err);
+                    this.error = "Не удалось загрузить данные фильма";
+
+                    // Устанавливаем дефолтный постер при ошибке
+                    this.film = {
+                        title: 'Фильм не найден',
+                        description: '',
+                        poster_url: this.defaultPoster
+                    };
+                } finally {
+                    this.isLoading = false;
+                }
+            },
+
+            async deleteReview() {
+                if (!confirm("Удалить ваш отзыв?")) return;
+
+                try {
+                    await this.$axios.delete(`/films/${this.$route.params.id}/reviews/me`, {
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem("token")}`
+                        }
+                    });
+
+                    this.userReview = null;
+                    this.text = "";
+                    await this.loadFilm();
+                } catch (err) {
+                    console.error("Ошибка удаления отзыва:", err);
+                    if (err.response?.status === 401) {
+                        this.$router.push("/login");
+                    }
+                }
+            },
+
+            async addReview() {
+                if (!this.text.trim()) {
+                    this.errors.text = "Поле отзыва не может быть пустым";
+                    return;
+                }
+
+                try {
+                    await this.$axios.post(
+                        `/films/${this.$route.params.id}/reviews/`,
+                        { text: this.text },
+                        {
+                            headers: {
+                                Authorization: `Bearer ${localStorage.getItem("token")}`
+                            }
+                        }
+                    );
+                    this.text = "";
+                    await this.loadFilm();
+                } catch (err) {
+                    console.error("Ошибка добавления отзыва:", err);
+                    if (err.response?.status === 401) {
+                        this.$router.push("/login");
+                    }
+                }
+            },
+
+            formatDate(dateString) {
+                const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                return new Date(dateString).toLocaleDateString('ru-RU', options);
+            }
+        },
+        mounted() {
+            this.loadFilm();
+        }
+    };
+</script>
+
+
+<style scoped>
+    .film-detail-container {
+        max-width: 90%;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .film-header {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+
+    .film-poster {
+        width: 400px;
+        height: 300px;
+        object-fit: cover;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .film-header-info {
+        flex: 1;
+    }
+
+    .film-title {
+        font-size: 32px;
+        margin: 0;
+    }
+
+    .film-description {
+        margin-top: 20px;
+        font-size: 18px;
+    }
+
+    .film-reviews {
+        margin-top: 30px;
+    }
+
+    .user-review {
+        background: #f9f9f9;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+        .user-review h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+    .delete-button {
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+
+        .delete-button:hover {
+            background-color: #c0392b;
+        }
+
+    .review-form textarea {
+        width: 100%;
+        min-height: 80px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        resize: vertical;
+    }
+
+    .review-form button {
+        margin-top: 10px;
+        padding: 10px 20px;
+        background-color: #2176FF;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .review-list {
+        list-style: none;
+        padding: 0;
+        margin-top: 20px;
+    }
+
+    .review-item {
+        background-color: #f9f9f9;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .no-reviews {
+        color: #666;
+        font-style: italic;
+    }
+</style>
+
+
+
+
+
+
+# main.py
+
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Form, status
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session, joinedload
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
+import os
+import logging
+import uuid
+
+from auth import get_current_user, verify_password, create_access_token, get_current_admin
+from models import User, Review, Film as bd_Film
+from database import get_db
+from schemas import UserCreate, FilmCreateWithPoster, ReviewCreate, Film, UserUpdate, UserOut, PasswordChange
+from crud import create_user, get_user_by_username, get_film, create_film_review, get_reviews_by_film, get_films, update_user, create_film
+from security import get_password_hash
+
+logger = logging.getLogger(__name__)
+
+app = FastAPI()
+
+BASE_DIR = Path(__file__).resolve().parent
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+
+# Настройка CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080"],  # Адрес твоего фронтенда
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# === ПОЛЬЗОВАТЕЛИ ===
+
+@app.post("/register/", status_code=201)
+def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    """Регистрация нового пользователя"""
+    db_user = get_user_by_username(db, username=user.username)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Пользователь с таким логином уже существует")
+    return create_user(db=db, user=user)
+
+
+@app.post("/login/")
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    user = get_user_by_username(db, username=form_data.username)
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=400,
+            detail="Неверный логин или пароль"
+        )
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/users/me", response_model=UserOut)
+def read_users_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Явно загружаем связанные данные администратора
+    user = db.query(User).options(joinedload(User.admin_profile)).filter(User.id == current_user.id).first()
+    return user
+
+@app.patch("/users/me")
+def update_profile(
+    user_update: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if user_update.public_name:
+        current_user.public_name = user_update.public_name
+    if user_update.bio:
+        current_user.bio = user_update.bio
+    if user_update.avatar_url:
+        current_user.avatar_url = user_update.avatar_url
+
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+@app.post("/users/me/avatar")
+async def update_avatar(
+    avatar: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        # Проверка типа файла
+        if not avatar.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="Только изображения разрешены")
+
+        # Создаем папку, если не существует
+        avatar_dir = Path("static/avatars")
+        avatar_dir.mkdir(exist_ok=True, parents=True)
+
+        # Генерируем уникальное имя файла
+        file_ext = Path(avatar.filename).suffix
+        new_filename = f"{current_user.id}_{uuid.uuid4()}{file_ext}"
+        file_path = avatar_dir / new_filename
+
+        # Сохраняем файл
+        with open(file_path, "wb") as buffer:
+            content = await avatar.read()
+            buffer.write(content)
+
+        # Обновляем запись в БД
+        current_user.avatar_url = f"http://localhost:8000/static/avatars/{new_filename}"
+        db.commit()
+
+        return {"avatar_url": current_user.avatar_url}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/users/me/password")
+def change_password(
+    password_change: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not verify_password(password_change.old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Неверный текущий пароль")
+
+    current_user.hashed_password = get_password_hash(password_change.new_password)
+    db.commit()
+    return {"detail": "Пароль изменён"}
+
+
+# === ФИЛЬМЫ ===
+
+from typing import List, Optional
+
+@app.get("/films/", response_model=List[Film])
+def read_films(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    films = get_films(db, skip=skip, limit=limit)
+    return films
+
+@app.get("/films/{film_id}", response_model=Film)
+def read_film(film_id: int, db: Session = Depends(get_db)):
+    film = get_film(db, film_id=film_id)
+    if not film:
+        raise HTTPException(status_code=404, detail="Фильм не найден")
+    return film
+
+@app.post("/films/with-poster/")
+def create_film(
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    poster: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    # Сохранение файла
+    poster_dir = "static/posters"
+    os.makedirs(poster_dir, exist_ok=True)
+    poster_location = f"{poster_dir}/{title}_{poster.filename}"
+
+    with open(poster_location, "wb") as buffer:
+        buffer.write(poster.file.read())
+
+    # Добавление фильма в БД
+    new_film = bd_Film(
+        title=title,
+        description=description,
+        poster_url=f"/{poster_location}"
+    )
+    db.add(new_film)
+    db.commit()
+    db.refresh(new_film)
+    return {"detail": "Фильм успешно добавлен"}
+
+
+# === ОТЗЫВЫ ===
+
+@app.post("/films/{film_id}/reviews/", status_code=201)
+def create_review_for_film(
+    film_id: int,
+    review: ReviewCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return create_film_review(db=db, review=review, film_id=film_id, user_id=current_user.id)
+
+
+# Предположим, Review и User уже импортированы
+# get_current_user и get_db тоже
+
+@app.get("/films/{film_id}/reviews/", status_code=200)
+def get_reviews(film_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    reviews = db.query(Review).options(joinedload(Review.author)).filter(Review.film_id == film_id).all()
+
+    user_review = None
+    public_reviews = []
+
+    for review in reviews:
+        review_data = {
+            "id": review.id,
+            "text": review.text,
+            "created_at": review.created_at,
+            "author_id": review.author_id,
+            "author_name": review.author.public_name
+        }
+
+        if review.author_id == current_user.id:
+            user_review = review_data
+        else:
+            public_reviews.append(review_data)
+
+    return {"user_review": user_review, "public_reviews": public_reviews}
+
+
+
+@app.delete("/films/{film_id}/reviews/me", status_code=204)
+def delete_my_review(film_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    review = db.query(Review).filter(
+        Review.film_id == film_id,
+        Review.author_id == current_user.id
+    ).first()
+
+    if not review:
+        raise HTTPException(status_code=404, detail="Отзыв не найден")
+
+    db.delete(review)
+    db.commit()
+
+
+
+# models.py
+
+from sqlalchemy import Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from datetime import datetime, timezone
+
+class Base(DeclarativeBase):
+    pass
+
+class User(Base):
+    __tablename__ = 'users'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String, unique=True)
+    public_name: Mapped[str] = mapped_column(String, default="Никнейм не задан")
+    hashed_password: Mapped[str] = mapped_column(String)
+    avatar_url: Mapped[str] = mapped_column(String, default="/static/default.png")
+    bio: Mapped[str] = mapped_column(String, default="Описание отсутствует")
+    admin_profile: Mapped["Admin"] = relationship("Admin", back_populates="user")
+    
+    reviews: Mapped[list["Review"]] = relationship("Review", back_populates="author")
+
+class Admin(Base):
+    __tablename__ = "admins"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    user: Mapped["User"] = relationship("User", back_populates="admin_profile")
+
+class Film(Base):
+    __tablename__ = 'films'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(String)
+    poster_url: Mapped[str] = mapped_column(String, default="/static/default-film.png")
+    
+    reviews: Mapped[list["Review"]] = relationship("Review", back_populates="film")
+
+class Review(Base):
+    __tablename__ = 'reviews'
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    text: Mapped[str] = mapped_column(String)
+    film_id: Mapped[int] = mapped_column(Integer, ForeignKey("films.id"))
+    author_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    film: Mapped["Film"] = relationship("Film", back_populates="reviews")
+    author: Mapped["User"] = relationship("User", back_populates="reviews")
+
+
+# schemas.py
+
+from pydantic import BaseModel, Field, model_validator
+from fastapi import UploadFile
+from typing import List, Optional
+from datetime import datetime
+
+class UserBase(BaseModel):
+    username: str
+
+
+class User(UserBase):
+    id: int
+    avatar_url: str = "default.jpg"
+
+    class Config:
+        from_attributes = True  # Для совместимости с SQLAlchemy
+
+# При регистрации
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+# Для ответа
+class UserOut(BaseModel):
+    id: int
+    username: str
+    public_name: Optional[str] = "Пользователь"
+    bio: Optional[str] = "Описание отсутствует"
+    avatar_url: Optional[str] = "/default.png"
+    is_admin: bool = Field(default=False, description="Является ли пользователь администратором")
+
+    class Config:
+        from_attributes = True
+
+    @model_validator(mode='before')
+    def set_admin_status(cls, values):
+        # Если передан объект SQLAlchemy
+        if hasattr(values, 'admin_profile'):
+            values.is_admin = values.admin_profile is not None
+        # Если передан словарь
+        elif 'admin_profile' in values:
+            values.is_admin = values['admin_profile'] is not None
+        return values
+
+# Для обновления профиля
+class UserUpdate(BaseModel):
+    public_name: Optional[str] = None
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str
+
+
+class FilmBase(BaseModel):
+    title: str
+    description: str
+
+class FilmCreateWithPoster(BaseModel):
+    title: str
+    description: Optional[str] = None
+    poster: UploadFile
+
+class Film(FilmBase):
+    id: int
+    reviews: List['Review'] = []
+
+    class Config:
+        from_attributes = True
+
+class FilmOut(FilmCreateWithPoster):
+    id: int
+    poster_url: str
+
+    class Config:
+        from_attributes = True
+
+
+class ReviewBase(BaseModel):
+    text: str
+
+class ReviewCreate(ReviewBase):
+    pass
+
+class Review(ReviewBase):
+    id: int
+    created_at: datetime
+    author_id: int
+    film_id: int
+
+    class Config:
+        from_attributes = True
+
+
+
+FilmList.vue
+
+<template>
+    <h1 style="text-align:center" class="text-center mb-4"><b>Фильмы</b></h1>
+    <div class="container">
+
+        <div class="film-grid">
+            <router-link v-for="film in films"
+                         :key="film.id"
+                         :to="`/films/${film.id}`"
+                         class="film-card-link">
+                <div class="film-card" style="background-color:dimgrey">
+                    <img :src="film.poster_url" alt="Постер" class="film-poster" />
+                    <div class="film-card-info">
+                        <h3 style="border-radius:50px;text-align:center;background-color:#808080; color:white" class="film-card-title">{{ film.title }}</h3>
+                        <p style="color:black" class="film-card-desc">{{ film.description }}</p>
+                    </div>
+                </div>
+            </router-link>
+
+        </div>
+    </div>
+</template>
+
+<script>
+    export default {
+        data() {
+            return {
+                films: [],
+                defaultPoster: `${this.$axios.defaults.baseURL}/static/default-film.png`
+            };
+        },
+        mounted() {
+            this.$axios.get("/films/").then(res => {
+                this.films = res.data.map(film => ({
+                    ...film,
+                    poster_url: film.poster_url || this.defaultPoster
+                }));
+            });
+        }
+    };
+</script>
+

@@ -1,0 +1,90 @@
+﻿<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>4757b05f-0971-4fe9-ab53-c0450023b3f7</ProjectGuid>
+    <ProjectHome>
+    </ProjectHome>
+    <StartupFile>
+    </StartupFile>
+    <SearchPath>
+    </SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <Name>practice_site</Name>
+    <RootNamespace>практика_сайт</RootNamespace>
+    <InterpreterId>MSBuild|env|$(MSBuildProjectFullPath)</InterpreterId>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <DebugSymbols>true</DebugSymbols>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="auth.py" />
+    <Compile Include="crud.py" />
+    <Compile Include="database.py" />
+    <Compile Include="main.py" />
+    <Compile Include="models.py" />
+    <Compile Include="schemas.py" />
+    <Compile Include="security.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="public\" />
+    <Folder Include="public\images\" />
+    <Folder Include="src\" />
+    <Folder Include="src\assets\" />
+    <Folder Include="src\components\" />
+    <Folder Include="src\views\" />
+    <Folder Include="src\router\" />
+    <Folder Include="static\" />
+    <Folder Include="static\avatars\" />
+    <Folder Include="static\posters\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Interpreter Include="env\">
+      <Id>env</Id>
+      <Version>3.13</Version>
+      <Description>env (Python 3.13 (64-bit))</Description>
+      <InterpreterPath>Scripts\python.exe</InterpreterPath>
+      <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
+      <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
+      <Architecture>X64</Architecture>
+    </Interpreter>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include=".env" />
+    <Content Include="all.txt" />
+    <Content Include="docker-compose.yml" />
+    <Content Include="Dockerfile" />
+    <Content Include="nginx.conf" />
+    <Content Include="public\favicon.ico" />
+    <Content Include="public\images\logout.png" />
+    <Content Include="public\index.html" />
+    <Content Include="requirements.txt" />
+    <Content Include="src\assets\logo.png" />
+    <Content Include="src\assets\styles.css" />
+    <Content Include="src\views\AddFilm.vue" />
+    <Content Include="src\components\FilmDetail.vue" />
+    <Content Include="src\components\FilmList.vue" />
+    <Content Include="src\components\LoginForm.vue" />
+    <Content Include="src\components\RegisterForm.vue" />
+    <Content Include="src\components\vue-router.vue" />
+    <Content Include="src\router\index.js" />
+    <Content Include="src\views\UserProfile.vue" />
+    <Content Include="static\default-film.png" />
+    <Content Include="static\default.png" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
+  <!-- Uncomment the CoreCompile target to enable the Build command in
+       Visual Studio and specify your pre- and post-build commands in
+       the BeforeBuild and AfterBuild targets below. -->
+  <!--<Target Name="CoreCompile" />-->
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+</Project>
