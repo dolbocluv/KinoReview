@@ -1,11 +1,1 @@
-﻿version: '3.8'
 
-services:
-  backend:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql+psycopg2://postgres:15253545@127.0.0.1:5432/practice
-    volumes:
-      - ./static:/app/static
