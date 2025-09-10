@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 
 load_dotenv()
-database_url = os.getenv("DATABASE_URL")
+database_url = "postgresql://postgres:SzDmLPmOWKDnYwireSFucIEPkmxlBako@postgres.railway.internal:5432/railway" # os.getenv("DATABASE_URL")
 
 
 engine = create_engine(database_url)
