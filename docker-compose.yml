@@ -1,17 +1,11 @@
-﻿services:
+﻿version: '3.8'
+
+services:
   backend:
     build: .
-    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:15253545@127.0.0.1:5432/practice
     volumes:
       - ./static:/app/static
-    expose:
-      - "8000"
-
-  frontend:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./dist:/usr/share/nginx/html
-    depends_on:
-      - backend
